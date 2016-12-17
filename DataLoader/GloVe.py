@@ -16,7 +16,8 @@ def load(file):
 
 def test():
     glove = load('/Users/Shared/data/glove.6B/glove.6B.50d.txt')
-    print(glove.loc['hello'])
+    print(glove)
+    print(glove.loc['the'])
 
 if __name__=='__main__':
     test()
