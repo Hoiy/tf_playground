@@ -1,3 +1,6 @@
+page_text
+skip-thoughts-data
+*.out
 *.pyc
 *.csv
 *.gzip

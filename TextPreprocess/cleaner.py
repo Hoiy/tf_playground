@@ -1,6 +1,9 @@
 from bs4 import BeautifulSoup
 from nltk.corpus import stopwords
 import re
+from nltk.stem.snowball import SnowballStemmer
+
+stemmer = SnowballStemmer('english')
 
 def clean( string ):
     # Function to convert a raw review to a string of words
@@ -22,7 +25,10 @@ def clean( string ):
     stops = set(stopwords.words("english"))                  
     # 
     # 5. Remove stop words
-    meaningful_words = [w for w in words if not w in stops]   
+    meaningful_words = [w for w in words if not w in stops]
+    #
+    # 5.5 stem words
+    meaningful_words = [stemmer.stem(w) for w in meaningful_words] 
     #
     # 6. Join the words back into one string separated by space, 
     # and return the result.
