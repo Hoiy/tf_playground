@@ -10,3 +10,4 @@ skip-thoughts-data
 *.bin
 *.pkl
 tf_playground
+logs
