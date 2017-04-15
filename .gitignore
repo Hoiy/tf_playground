@@ -11,3 +11,5 @@ skip-thoughts-data
 *.pkl
 tf_playground
 logs
+data
+model
