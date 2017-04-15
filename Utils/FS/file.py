@@ -1,5 +1,6 @@
 import pickle
 import os
+import pandas
 
 def DoActionByExt(action, ext, args):
     return globals()['{0}_{1}'.format(ext, action)](*args)
@@ -35,6 +36,15 @@ def txt_write(path, data):
 def ls(path):
     path = os.path.abspath(path)
     return [os.path.join(path, f) for f in os.listdir(path)]
+
+def csv_read(path):
+    return pandas.read_csv(path)    
+
+def csv_write(path, data):
+    return data.to_csv(path)
+
+def json_write(path, data):
+    return data.to_json(path)
 
 def test():
    obj = [1, 2]
