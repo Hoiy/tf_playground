@@ -1,12 +1,11 @@
 from collections import Counter
-import operator
 
 # sorted by desc frequency as nce_loss function use uni-log sampling
 def convert(words):
     counter = Counter(words)
     word_dict = {}
     index = 0
-    for item in sorted(counter.items(), key=operator.itemgetter(1), reverse=True):
+    for item in sorted(counter.items(), key=lambda x: (x[1], x[0]), reverse=True):
         word_dict[item[0]] = index
         index += 1
      
