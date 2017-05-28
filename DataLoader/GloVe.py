@@ -16,7 +16,7 @@ def load(file):
 
 def load2(file = '/Users/Shared/data/glove.6B/glove.6B.50d.txt'):
     print("Start: Loading Glove Model")
-    f = open(file,'r')
+    f = open(file,'r', encoding='utf8')
     model = {}
     for line in f:
         splitLine = line.split()
