@@ -87,7 +87,7 @@ class Embedding:
     def build_dicts(self):
         self.sym2Idx = {}
         index = 0
-        for key in self.emb.keys():
+        for key in sorted(self.emb.keys()):
             self.sym2Idx[key] = index
             index += 1
             
@@ -399,30 +399,28 @@ def simple_encoder(inputs, input_lengths, embeddings, dropout = 0.0, reuse = Non
 #OUT (batch, dim)
 
 
-# In[34]:
+# In[13]:
 
 import keras
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.layers import Dense, Input, LSTM, Embedding, Dropout, Activation
 from keras.layers import Concatenate, Reshape, concatenate
-from keras.layers import Conv1D, MaxPooling1D
+from keras.layers import Conv1D, MaxPooling1D, Bidirectional, GRU
 from keras.models import Model
 from keras.layers import Flatten
 from keras.layers.normalization import BatchNormalization
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 MAX_SEQUENCE_LENGTH = 30
-num_dense = 200
+num_dense = 50
 
 
-# In[28]:
-
-
-"""
+# In[27]:
 
 conv_max_length = 2
-conv_dim = 300
-rnn_step = 1
+conv_dim = 100
+rnn_step = 5
+conv_layers = 2
 
 print(conv_max_length)
 print(conv_dim)
@@ -437,50 +435,61 @@ embedding_layer = Embedding(WORD_COUNT,
         input_length=MAX_SEQUENCE_LENGTH,
         trainable=False)
 
-lstm_layer = LSTM(200, dropout=0.3, recurrent_dropout=0.3)
+lstm_layer = Bidirectional(GRU(200, dropout=0.2, recurrent_dropout=0.2))
+#lstm_layer = Bidirectional(GRU(200, dropout=0.1, recurrent_dropout=0.1))(lstm_layer)
+lstm_layer_0 = [Bidirectional(GRU(100, dropout=0.2, recurrent_dropout=0.2)) for i in range(rnn_step)]
 
 sequence_1_input = Input(shape=(MAX_SEQUENCE_LENGTH,), dtype='int32')
 embedded_sequences_1 = embedding_layer(sequence_1_input)
 
 # create same conv for both
-conv = [[Conv1D(conv_dim, j+2, padding='same') for j in range(conv_max_length)] for i in range(rnn_step)]
+conv = [[Conv1D((j+1) * 2 * WORD_DIM, 2, padding='same') for j in range(conv_layers)] for i in range(rnn_step)]
+maxpool = [[MaxPooling1D(pool_size=2, strides=2, padding='same') for j in range(conv_layers)] for i in range(rnn_step)]
+flatten = Flatten()
+dense = [Dense(600, activation='relu') for j in range(conv_layers)]
+reshape = Reshape((1, -1))
 
-# create conv1d for each step and each length
-feat_1 = [[conv[i][j](embedded_sequences_1) for j in range(conv_max_length)] for i in range(rnn_step)]
-#feat_1 = MaxPooling1D(pool_size=2, strides=2, padding='same')(feat_1[0][0])
-#feat_1 = [Reshape((1, conv_dim * MAX_SEQUENCE_LENGTH * conv_max_length))(Concatenate()(feat_1[i])) for i in range(rnn_step)]
-feat_1 = Concatenate(1)(feat_1[0])
+def pipe(embedded_sequences):
+    steps = [lstm_layer_0[i](embedded_sequences) for i in range(rnn_step)]
+    reshapes = [Reshape((1, -1))(steps[i]) for i in range(rnn_step)]
+    print(reshapes)
+    concat = Concatenate(1)(reshapes)
+    print(concat)
+    feat = lstm_layer(concat)
+    #feat = conv[0][0](embedded_sequences)
+    #feat = maxpool[0][0](feat)
+    #feat = conv[0][1](feat)
+    #feat = maxpool[0][1](feat)
+    
+    #feat = [Reshape((1, -1))(Concatenate()(feat[i])) for i in range(rnn_step)]
+    #feat = Concatenate(1)(feat)
+    #lstm_layer(feat)
+    print(feat)
+    #feat = flatten(feat)
+    #feat = dense(feat)
+    return feat
 
-#x1 = lstm_layer(feat_1)
-x1 = Flatten()(feat_1)
-
-print('x1: ', x1)
+x1 = pipe(embedded_sequences_1)
 
 sequence_2_input = Input(shape=(MAX_SEQUENCE_LENGTH,), dtype='int32')
 embedded_sequences_2 = embedding_layer(sequence_2_input)
 
-# create conv1d for each step and each length
-feat_2 = [[conv[i][j](embedded_sequences_2) for j in range(conv_max_length)] for i in range(rnn_step)]
-#feat_2 = MaxPooling1D(pool_size=2, strides=2, padding='same')(feat_2[0][0])
-#feat_2 = [Reshape((1, MAX_SEQUENCE_LENGTH * conv_dim * conv_max_length))(Concatenate()(feat_2[i])) for i in range(rnn_step)]
-feat_2 = Concatenate(1)(feat_2[0])
-
-#y1 = lstm_layer(feat_2)
-y1 = Flatten()(feat_2)
+y1 = pipe(embedded_sequences_2)
 
 merged = Concatenate()([x1, y1])
-merged = Dropout(0.05)(merged)
+merged = Dropout(0.2)(merged)
 merged = BatchNormalization()(merged)
 
 merged = Dense(num_dense, activation='relu')(merged)
-merged = Dropout(0.05)(merged)
+merged = Dropout(0.2)(merged)
 merged = BatchNormalization()(merged)
 
 preds = Dense(1, activation='sigmoid')(merged)
-"""
 
 
-# In[36]:
+# In[15]:
+
+""" 0.49 LB
 
 embedding_layer = Embedding(WORD_COUNT,
         WORD_DIM,
@@ -507,20 +516,21 @@ merged = BatchNormalization()(merged)
 merged = Dropout(0.3)(merged)
 
 preds = Dense(1, activation='sigmoid')(merged)
+"""
 
 
-# In[14]:
+# In[16]:
 
 model = Model(
     inputs=[sequence_1_input, sequence_2_input],
     outputs=preds
 )
 model.compile(loss='binary_crossentropy',
-        optimizer='nadam',
+        optimizer='adam',
         metrics=['acc'])
 
 
-# In[15]:
+# In[17]:
 
 q1 = {}
 q2 = {}
@@ -541,14 +551,14 @@ for i in ['train', 'test']:
     label[i] += [rec[2] for rec in data[i]]
 
 
-# In[16]:
+# In[18]:
 
 print(len(q1['train']))
 print(len(q2['train']))
 print(len(label['train']))
 
 weight_val = np.ones(len(label['test']))
-#weight_val *= 0.472001959
+weight_val *= 0.472001959
 for i in range(len(label['test'])):
     if label['test'][i] == 0:
         weight_val[i] = 1.309028344
@@ -559,25 +569,78 @@ print(label['test'][:10])
 print(weight_val[:10])
 
 
-# In[22]:
+# In[19]:
 
 positive_ratio = sum(label['train']) / len(label['train'])
 
 
-# In[19]:
+# In[ ]:
 
 #import keras
+early_stopping =EarlyStopping(monitor='val_loss', patience=3)
+bst_model_path = 'q.h5'
+model_checkpoint = ModelCheckpoint(bst_model_path, save_best_only=True, save_weights_only=True)
 tbCallBack = keras.callbacks.TensorBoard(log_dir='./Tensorboard', histogram_freq=0, write_graph=True, write_images=True)
+
 hist = model.fit(
     [q1['train'], q2['train']], 
     label['train'],
-    validation_data=([q1['test'], q2['test']], label['test']),
+    validation_data=([q1['test'], q2['test']], label['test'], weight_val),
     epochs=200, 
-    batch_size=256, 
+    batch_size=512, 
     shuffle=True,
-    class_weight = {0: 0.5 / (1. - positive_ratio), 1: 0.5 / positive_ratio },
-    callbacks=[tbCallBack]
+    #class_weight = {0: 0.5 / (1. - positive_ratio), 1: 0.5 / positive_ratio },
+    class_weight = class_weight,
+    callbacks=[tbCallBack, early_stopping, model_checkpoint]
 )
+
+
+# In[23]:
+
+test_data = file.read('./data/Quora/test.csv')
+test_data.question1 = test_data.question1.astype(str)
+test_data.question2 = test_data.question2.astype(str)
+test_data = test_data.as_matrix(['test_id', 'question1', 'question2'])
+
+
+# In[24]:
+
+test_ids = [rec[0] for rec in test_data]
+
+
+# In[25]:
+
+test_data_1 = []
+test_data_2 = []
+for rec in test_data:
+    test_data_1.append(preprocessQuestion(rec[1]))
+    test_data_2.append(preprocessQuestion(rec[2]))
+    
+test_data_1 = pad_sequences(test_data_1, maxlen=MAX_SEQUENCE_LENGTH)
+test_data_2 = pad_sequences(test_data_2, maxlen=MAX_SEQUENCE_LENGTH)
+
+
+# In[26]:
+
+bst_model_path = 'q.h5'
+model.load_weights(bst_model_path)
+#bst_val_score = min(hist.history['val_loss'])
+
+########################################
+## make the submission
+########################################
+print('Start making the submission before fine-tuning')
+
+preds = model.predict([test_data_1, test_data_2], batch_size=8192, verbose=1)
+#preds += model.predict([test_data_2, test_data_1], batch_size=8192, verbose=1)
+#preds /= 2
+
+
+# In[ ]:
+
+import pandas as pd
+submission = pd.DataFrame({'test_id':test_ids, 'is_duplicate': preds.ravel()})
+submission.to_csv('q.csv', index=False)
 
 
 # In[ ]:
