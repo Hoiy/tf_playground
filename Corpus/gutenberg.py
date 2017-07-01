@@ -1,7 +1,7 @@
-from nltk.corpus import brown
+from nltk.corpus import gutenberg
 
 def raw():
-    return brown.raw();
+    return gutenberg.raw();
 """
 def corpus(toLower=True, verbose=0):
     sents = brown.sents()
