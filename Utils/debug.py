@@ -7,7 +7,7 @@ def dump(data, max_size=250):
         r.maxstring = max_size
     elif isinstance(data, types.GeneratorType):
         count = 0;
-        while count < 10:
+        while count < max_size:
             print(next(data))
             count = count + 1
         return
