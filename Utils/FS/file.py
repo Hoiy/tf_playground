@@ -13,6 +13,12 @@ def write(path, data):
     filename, file_ext = os.path.splitext(path)
     return DoActionByExt('write', file_ext[1:], [path, data])
 
+def save(path, data):
+    return write(path, data)
+
+def load(path):
+    return read(path)
+
 def pkl_read(path):
     with open(path, 'rb') as f:
         return pickle.load(f)
@@ -38,7 +44,7 @@ def ls(path):
     return [os.path.join(path, f) for f in os.listdir(path)]
 
 def csv_read(path):
-    return pandas.read_csv(path)    
+    return pandas.read_csv(path)
 
 def csv_write(path, data):
     return data.to_csv(path)

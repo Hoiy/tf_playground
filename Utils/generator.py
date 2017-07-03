@@ -14,6 +14,10 @@ def random_window(size):
             yield iteratable[start:start+size]
     return generator
 
+def transform(generator, transformer):
+    for i in generator:
+        yield transformer(i)
+
 def test():
     for j in range(1, 5):
         generator = sliding_window(j)(['a', 'b', 'c', 'd'])
@@ -25,6 +29,11 @@ def test():
         print(j)
         for i in range(5):
             print(next(generator))
+
+    generator = transform(sliding_window(2)(['a', 'b', 'c', 'd']), lambda x: x[0] + x[1])
+    for i in generator:
+        print(i)
+
 
 if __name__=='__main__':
     test()

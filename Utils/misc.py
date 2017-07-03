@@ -40,6 +40,11 @@ def trace_progress(func):
 
     return callf
 
+def batch(func, batch_data):
+    import collections
+    assert isinstance(batch_data, collections.Iterable)
+    return [func(data) for data in batch_data]
+
 def test():
     func = trace_progress(lambda x: x)
     for i in range(1000000):
@@ -47,4 +52,3 @@ def test():
 
 if __name__=='__main__':
     test()
-

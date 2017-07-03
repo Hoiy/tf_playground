@@ -9,7 +9,13 @@ def build_index(iterator):
 
     idx2Obj = { idx: obj for obj, idx in obj2Idx.items() }
 
-    return obj2Idx, idx2Obj
+    def o2i(o):
+        return obj2Idx[o]
+
+    def i2o(i):
+        return idx2Obj[i]
+
+    return o2i, i2o, len(obj2Idx)
 
 def test():
     m1, m2 = build_index(['a', 'a', 'c', 'b', 'a', 'b'])
@@ -18,4 +24,3 @@ def test():
 
 if __name__=='__main__':
     test()
-
