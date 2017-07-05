@@ -17,6 +17,9 @@ def build_index(iterator):
 
     return o2i, i2o, len(obj2Idx)
 
+def index_2_one_hot(index, max_size=87):
+    return [1 if i == index else 0 for i in range(max_size)]
+
 def test():
     m1, m2 = build_index(['a', 'a', 'c', 'b', 'a', 'b'])
     print(m1)
