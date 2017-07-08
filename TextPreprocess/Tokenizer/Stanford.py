@@ -2,6 +2,8 @@
 
 from nltk.tokenize import StanfordTokenizer
 
+# https://github.com/nltk/nltk/wiki/Installing-Third-Party-Software
+
 def tokenize(x):
     return StanfordTokenizer().tokenize(x)
 
