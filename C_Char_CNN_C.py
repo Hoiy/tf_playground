@@ -39,7 +39,7 @@ s2i, i2s, size = build_index(char_generator())
 # In[5]:
 
 #MAX_SEQ_LENGTH = max([len(word) for word in data])
-SEQ_LENGTH = 64
+SEQ_LENGTH = 32
 
 
 # In[6]:
@@ -58,9 +58,9 @@ NUM_SAMPLE = len(list(word_generator()))
 NUM_SAMPLE
 
 
-# In[36]:
+# In[8]:
 
-from keras.layers import Input, Conv2D, Conv2DTranspose, Dense, Flatten, Dropout, Reshape, Embedding
+from keras.layers import Input, Conv2D, Conv2DTranspose, Dense, Flatten, Dropout, Reshape, Embedding, Concatenate
 from keras.models import Model, Sequential
 from keras.regularizers import l2
 from keras.optimizers import Adam
@@ -87,34 +87,39 @@ def create_baseline():
     
     activation = 'selu'
     padding = 'same'
-    use_bias = False
+    use_bias = True
     layer = 3
-    dim = [400, 200, 200, 200, 200, 100]
-    kernel = [5, 4, 3, 2, 2, 2]
-    strides = [1, 1, 1, 1, 1, ]
+    dim = [200, 100, 50, 200, 200, 100]
+    kernel = [5, 3, 2, 2, 2, 2]
+    strides = [1, 2, 2, 1, 1, ]
     
     inp = Input(shape=(SEQ_LENGTH,NUM_SYMBOL))
     x = Reshape((1, SEQ_LENGTH, NUM_SYMBOL))(inp)
+    layers = []
     for i in range(layer):
         x = Conv2D(dim[i], (1, kernel[i]), strides=(1, strides[i]), activation=activation, padding=padding, use_bias=use_bias)(x)
+        layers.append(x)
 
-    x = Dense(50, activation='selu')(x)
+    x = Dense(10, activation='selu')(x)
     x = Flatten()(x)
+    y = Flatten()(layers[0])
+    x = Concatenate()([x,y])
+    x = Dense(300, activation='selu')(x)
     x = Dense(NUM_SYMBOL, activation='softmax')(x)
     model = Model(inp, x)
-    opt = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.001)
+    opt = Adam(lr=0.002, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0002)
     model.compile(loss='categorical_crossentropy',
               optimizer=opt)
     return model
 
 
-# In[37]:
+# In[9]:
 
 model = create_baseline()
 model.summary()
 
 
-# In[38]:
+# In[10]:
 
 from keras.utils.np_utils import to_categorical
 
@@ -141,14 +146,14 @@ def sample_generator(sliding_window_generator, batch_size = 64):
             label = []
 
 
-# In[39]:
+# In[11]:
 
 window_gen = sliding_window(SEQ_LENGTH + 1)(data)
 print(next(sample_generator(window_gen, 2))[0].shape)
 print(next(sample_generator(window_gen, 2))[1].shape)
 
 
-# In[40]:
+# In[ ]:
 
 from keras.callbacks import Callback, ModelCheckpoint
 def testing(model):
@@ -167,15 +172,15 @@ class testSample(Callback):
         testing(model)
 
 
-# In[41]:
+# In[ ]:
 
 from keras_tqdm import TQDMNotebookCallback
 
-mc = ModelCheckpoint('./model/char_cnn.hdf5', monitor='loss', verbose=0, save_best_only=True, save_weights_only=False, mode='auto', period=1)
+mc = ModelCheckpoint('./model/char_cnn_2.hdf5', monitor='loss', verbose=0, save_best_only=True, save_weights_only=False, mode='auto', period=1)
 
 
 word_gen = word_generator()
-BATCH_SIZE = 128
+BATCH_SIZE = 1024
 model.fit_generator(
     sample_generator(window_gen, BATCH_SIZE),
     NUM_SAMPLE // BATCH_SIZE // 100,
