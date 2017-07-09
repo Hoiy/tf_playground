@@ -26,39 +26,40 @@ data = corpus.raw()
 
 # In[3]:
 
+data = data[:len(data) // 50]
+
+
+# In[4]:
+
 def char_generator():
     for char in data:
         yield char
 
 
-# In[4]:
+# In[5]:
 
 s2i, i2s, size = build_index(char_generator())
 
 
-# In[5]:
+# In[6]:
 
 #MAX_SEQ_LENGTH = max([len(word) for word in data])
 SEQ_LENGTH = 32
 
 
-# In[6]:
+# In[7]:
 
 NUM_SYMBOL = size
 NUM_SYMBOL
 
 
-# In[7]:
+# In[8]:
 
-def word_generator():
-    for word in data:
-            yield word
-
-NUM_SAMPLE = len(list(word_generator()))
+NUM_SAMPLE = len(data)
 NUM_SAMPLE
 
 
-# In[8]:
+# In[9]:
 
 from keras.layers import Input, Conv2D, Conv2DTranspose, Dense, Flatten, Dropout, Reshape, Embedding, Concatenate
 from keras.models import Model, Sequential
@@ -113,13 +114,13 @@ def create_baseline():
     return model
 
 
-# In[9]:
+# In[10]:
 
 model = create_baseline()
 model.summary()
 
 
-# In[10]:
+# In[11]:
 
 from keras.utils.np_utils import to_categorical
 
@@ -146,7 +147,7 @@ def sample_generator(sliding_window_generator, batch_size = 64):
             label = []
 
 
-# In[11]:
+# In[12]:
 
 window_gen = sliding_window(SEQ_LENGTH + 1)(data)
 print(next(sample_generator(window_gen, 2))[0].shape)
@@ -178,12 +179,10 @@ from keras_tqdm import TQDMNotebookCallback
 
 mc = ModelCheckpoint('./model/char_cnn_2.hdf5', monitor='loss', verbose=0, save_best_only=True, save_weights_only=False, mode='auto', period=1)
 
-
-word_gen = word_generator()
 BATCH_SIZE = 1024
 model.fit_generator(
     sample_generator(window_gen, BATCH_SIZE),
-    NUM_SAMPLE // BATCH_SIZE // 100,
+    NUM_SAMPLE // BATCH_SIZE,
     epochs=200000,
     callbacks = [testSample(), mc]
     #verbose=0, callbacks=[TQDMNotebookCallback(), testSample()]

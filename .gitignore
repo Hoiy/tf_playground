@@ -1,3 +1,5 @@
+.floydignore
+.floydexpt
 page_text
 skip-thoughts-data
 *.out
