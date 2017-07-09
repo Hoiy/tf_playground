@@ -1,8 +1,9 @@
 def sliding_window(size):
     assert size > 0
     def generator(iteratable):
-        for i in range(len(iteratable) - size + 1):
-            yield iteratable[i:i+size]
+        while True:
+            for i in range(len(iteratable) - size + 1):
+                yield iteratable[i:i+size]
     return generator
 
 def random_window(size):
