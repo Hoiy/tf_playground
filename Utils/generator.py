@@ -24,7 +24,8 @@ def transform(generator, transformer):
 # input window size, data, output training generator, testing generator
 
 def sliding_window_random_access(data, window_size, validation_size=0.2):
-    assert isinstance(data, str) 
+    import collections
+    assert isinstance(data, collections.Sequence) 
     assert window_size >= 1
    
     indice = list(range(len(data)-window_size + 1))

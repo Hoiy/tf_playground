@@ -45,6 +45,13 @@ def batch(func, batch_data):
     assert isinstance(batch_data, collections.Iterable)
     return [func(data) for data in batch_data]
 
+def batch(func):
+    def batchFunc(batchData):
+        import collections
+        assert isinstance(batchData, collections.Iterable)
+        return [func(data) for data in batchData]
+    return batchFunc
+
 def test():
     func = trace_progress(lambda x: x)
     for i in range(1000000):

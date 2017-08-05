@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
-import pandas as pd
-
 def load(file):
+    from pandas import read_csv
     print("Start: Loading Glove Model")
-    data = pd.read_csv(
+    data = read_csv(
         file,
         header=None,
         index_col=0,
@@ -29,6 +28,29 @@ def load2(file = '/Users/Shared/data/glove.6B/glove.6B.50d.txt', dim=50):
 
     print("End: Loaded %d rows." % len(model))
     return model
+
+# Return index to vector numpy array
+def selective_load(file, dim, o2i, i2o, dict_size, notFound='zeros'):
+    print("Start: Loading Glove Model")
+    f = open(file,'r', encoding='utf8')
+
+    emb = {}
+    for line in f:
+        splitLine = line.split()
+        vec = [float(val) for val in splitLine[-dim:]]
+        emb[splitLine[0]] = vec
+
+    print("End: Loaded %d rows." % len(emb))
+
+    arr = []
+    for i in range(dict_size):
+        if i2o(i) in emb:
+            arr.append(emb[i2o(i)])
+        else:
+            arr.append([0. for j in range(dim)])
+
+    import numpy as np
+    return np.array(arr), emb
 
 def test():
     import os

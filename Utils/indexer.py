@@ -15,13 +15,16 @@ def build_index(iterator):
     def i2o(i):
         return idx2Obj[i]
 
+    for i in range(len(obj2Idx)):
+        assert o2i(i2o(i)) == i
+
     return o2i, i2o, len(obj2Idx)
 
 def index_2_one_hot(index, max_size=87):
     return [1 if i == index else 0 for i in range(max_size)]
 
 def test():
-    m1, m2 = build_index(['a', 'a', 'c', 'b', 'a', 'b'])
+    m1, m2, size = build_index(['a', 'a', 'c', 'b', 'a', 'b'])
     print(m1)
     print(m2)
 
