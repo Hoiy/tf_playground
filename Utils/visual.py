@@ -5,6 +5,10 @@ def hist(data, bin_width=1, title='Data Histogram'):
     plt.title(title)
     plt.show()
 
+def plot(data, title="Data Plot"):
+    plt.plot(data)
+    plt.show()
+
 def tally(iteratable):
     from collections import defaultdict
     count = defaultdict(int)
