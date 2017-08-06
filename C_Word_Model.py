@@ -23,14 +23,12 @@ from random import randint
 # In[2]:
 
 from nltk.corpus import gutenberg
-sents = gutenberg.sents(['austen-emma.txt', 'austen-persuasion.txt', 'austen-sense.txt'])
+#sents = gutenberg.sents(['austen-emma.txt', 'austen-persuasion.txt', 'austen-sense.txt'])
 words = gutenberg.words(['austen-emma.txt', 'austen-persuasion.txt', 'austen-sense.txt'])
-
-def toLower(s):
-    return s.lower()
-
-words = batch(toLower)(words)
-sents = batch(batch(toLower))(sents)
+#words = gutenberg.words()
+words = batch(lambda s: s.lower())(words)
+print(len(words))
+#sents = batch(batch(toLower))(sents)
 
 
 # In[3]:
@@ -45,6 +43,9 @@ def words_generator():
 # build index for all words
 o2i, i2o, size = build_index(words_generator())
 print(size)
+print(o2i('a'))
+print(o2i('and'))
+print(o2i('the'))
 
 
 # In[5]:
@@ -62,13 +63,13 @@ WORD_EMB_DIM = 300
 glove, orig_glove = GloVe.selective_load('./data/GloVe/glove.6B.{}d.txt'.format(WORD_EMB_DIM), WORD_EMB_DIM, o2i, i2o, size)
 
 
-# In[ ]:
+# In[6]:
 
-print(np.average([len(sent) for sent in sents]))
-SEQ_LENGTH = 32
+#print(np.average([len(sent) for sent in sents]))
+SEQ_LENGTH = 16
 
 
-# In[ ]:
+# In[53]:
 
 from keras.layers import Activation, dot, add, MaxPooling1D, MaxPooling2D, Bidirectional, Input, GRU, LSTM, SimpleRNN, Conv1D, Conv2D, Conv2DTranspose, Dense, Flatten, Dropout, Reshape, Embedding, Concatenate
 from keras.models import Model, Sequential
@@ -76,6 +77,8 @@ from keras.regularizers import l2
 from keras.optimizers import Adam
 from keras.constraints import unit_norm
 from keras.initializers import Identity
+from keras import backend as K
+from keras.engine.topology import Layer
 import numpy as np
 import tensorflow as tf
 
@@ -95,39 +98,80 @@ def attention(query, query_emb, sem_emb):
     att = Activation('softmax')(att)
     att = dot([att, sem_emb], (1,1))
     return att
-    
+
+class ReverseEmbedding(Layer):
+    def __init__(self, layer, **kwargs):
+        self.emb_layer = layer
+        super(ReverseEmbedding, self).__init__(**kwargs)
+
+    def build(self, input_shape):
+        super(ReverseEmbedding, self).build(input_shape)  # Be sure to call this somewhere!
+
+    def call(self, x):
+        return K.dot(x, K.transpose(self.emb_layer.get_weights()[0]))
+
+    def compute_output_shape(self, input_shape):
+        return (input_shape[0], self.emb_layer.get_weights()[0].shape[0])
+
 
 def create_baseline():
     
-    GRU_DIM = 128
+    GRU_DIM = 256
         
     inp = Input(shape=(SEQ_LENGTH,))
-    sem_emb = Embedding(glove.shape[0], glove.shape[1], weights=[glove], input_length=SEQ_LENGTH, trainable=False )(inp)
+    embeddingLayer = Embedding(glove.shape[0], glove.shape[1], weights=[glove], input_length=SEQ_LENGTH, trainable=True)
+    sem_emb = embeddingLayer(inp)
     x = Bidirectional(GRU(GRU_DIM, activation='selu', return_sequences=True))(sem_emb)
-    x = Bidirectional(GRU(GRU_DIM, activation='selu', return_sequences=True))(x)
-    x = Bidirectional(GRU(GRU_DIM, activation='selu', return_sequences=True))(x)
     predict = Bidirectional(GRU(GRU_DIM, activation='selu'))(x)
     
+    #last_word = sem_emb[:,-1,:]
     
+    #predict = Concatenate()([x, last_word])
     #query, query_emb, sem_emb = create_encoder(inp)
     #att = attention(query, query_emb, sem_emb)
     
-    #x = Dense(GRU_DIM * 2, activation='selu')(predict)
-    x = Dense(glove.shape[0], activation='softmax')(predict)
-    model = Model(inp, x)
+    query = Dense(WORD_EMB_DIM, activation='selu')(predict)
+    
+    print('query', query)
+    
+    #predict = ReverseEmbedding(embeddingLayer)(query)
+    #predict = Activation('softmax')(predict)
+    
+    print(predict)
+    #predict = dot([])    
+    #keras_glove = Input([glove.shape[0], glove.shape[1]])
+    #K.is_keras_tensor(keras_input)
+    
+    #keras_glove = K.constant(glove, shape=(None, glove.shape[0], glove.shape[1]))
+    
+    #print(keras_glove)
+    #print(predict)
+    
+    #predict = dot([predict, keras_glove], (1,1))
+    
+    #print(predict)
+    #predict = Flatten()(predict)
+    
+    #print(predic)
+    #predict = Activation('softmax')(predict)
+    
+    
+    #predict = Dense(WORD_EMB_DIM, activation='selu')(predict)
+    predict = Dense(glove.shape[0], activation='softmax')(query)
+    model = Model(inp, predict)
     #opt = Adam(lr=0.002, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0002)
     model.compile(loss='sparse_categorical_crossentropy',
               optimizer='adam')
     return model
 
 
-# In[ ]:
+# In[54]:
 
 model = create_baseline()
 model.summary()
 
 
-# In[ ]:
+# In[55]:
 
 from keras.utils.np_utils import to_categorical
 
@@ -152,7 +196,7 @@ def sample_generator(sliding_window_generator, batch_size = 64):
             label = []
 
 
-# In[ ]:
+# In[56]:
 
 gen = {}
 size = {}
@@ -161,15 +205,31 @@ print(next(sample_generator(gen['train'], 2))[0].shape)
 print(next(sample_generator(gen['test'], 3))[1].shape)
 
 
-# In[ ]:
+# In[57]:
 
 from keras.callbacks import Callback, ModelCheckpoint
+
+def sample(a, temperature=1.0):
+    # helper function to sample an index from a probability array
+    a = np.log(a) / temperature
+    a = np.exp(a) / np.sum(np.exp(a))
+    return np.random.choice(glove.shape[0], p=a)
+
 def testing(model):
-    seed = """Your child comes home and presents you with a drawing of your house . There is a blue house , a yellow sun , and a green sky ."""
+    #seed = """Your child comes home and presents you with a drawing of your house . There is a blue house , a yellow sun , and a green sky . What else do you want ?"""
+    #words = seed.lower().split(' ')
+    #for i in range(50):
+    #    predict = model.predict(np.array([batch(o2i)(words[-SEQ_LENGTH:])]))[0]
+    #    i = np.argmax(predict)
+    #    words.append(i2o(i))
+        
+    #print(' '.join(words))
+        
+    seed = """Your child comes home and presents you with a drawing of your house . There is a blue house , a yellow sun , and a green sky . What else do you want ?"""
     words = seed.lower().split(' ')
-    for i in range(50):
+    for i in range(200):
         predict = model.predict(np.array([batch(o2i)(words[-SEQ_LENGTH:])]))[0]
-        i = np.argmax(predict)
+        i = sample(predict, 0.5)
         words.append(i2o(i))
         
     print(' '.join(words))
@@ -179,11 +239,11 @@ class testSample(Callback):
         testing(model)
 
 
-# In[ ]:
+# In[58]:
 
 from keras_tqdm import TQDMNotebookCallback
 
-mc = ModelCheckpoint('./model/char_cnn_2.hdf5', monitor='val_loss', verbose=0, save_best_only=True, save_weights_only=False, mode='auto', period=1)
+mc = ModelCheckpoint('./model/word_model.hdf5', monitor='val_loss', verbose=0, save_best_only=True, save_weights_only=False, mode='auto', period=1)
 
 BATCH_SIZE = 2048
 model.fit_generator(
@@ -199,7 +259,14 @@ model.fit_generator(
 
 # In[ ]:
 
+from keras.models import load_model
 
+model = load_model('./model/word_model.hdf5')
+
+
+# In[ ]:
+
+testing(model)
 
 
 # In[ ]:
