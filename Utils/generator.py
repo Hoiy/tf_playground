@@ -19,6 +19,22 @@ def transform(generator, transformer):
     for i in generator:
         yield transformer(i)
 
+def random_access(data, validation_size=0.2):
+    indice = list(range(len(data)))
+    import random
+    random.shuffle(indice)
+    split_idx = int(len(indice) * (1.-validation_size))
+    idx = {}
+    idx['train'] = indice[:split_idx]
+    idx['test'] = indice[split_idx:]
+    def generator(mode):
+        while True:
+            random.shuffle(idx[mode])
+            for i in idx[mode]:
+                yield data[i]
+    print('Training data size:', len(idx['train']))
+    print('Testing data size:', len(idx['test']))
+    return generator('train'), generator('test'), len(idx['train']), len(idx['test'])
 
 # Use case, random spllit data into training and validation set
 # input window size, data, output training generator, testing generator
